@@ -11,6 +11,7 @@ topics:
   - prompt
   - terminal-interface
   - terminal-ui
+publish_to: none
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -21,7 +22,8 @@ platforms:
   windows:
 
 dependencies:
-  terminice_core: ^1.2.1
+  terminice_core: 
+    path: ../terminice_core
   intl: ^0.20.0
   time_plus: ^1.3.2
 

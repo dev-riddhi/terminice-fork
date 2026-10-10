@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show sleep;
 
 import 'terminal.dart';
 import 'terminal_context.dart';
@@ -114,24 +113,50 @@ class KeyEventReader {
     // Backspace
     if (byte == 127 || byte == 8) return const KeyEvent(KeyEventType.backspace);
 
+    // Windows console extended keys (prefix 0 or 224 / 0xE0)
+    if (byte == 0 || byte == 224) {
+      final scan = TerminalControl.tryReadNextByte();
+      if (scan != null) {
+        switch (scan) {
+          case 72:
+            return const KeyEvent(KeyEventType.arrowUp);
+          case 80:
+            return const KeyEvent(KeyEventType.arrowDown);
+          case 75:
+            return const KeyEvent(KeyEventType.arrowLeft);
+          case 77:
+            return const KeyEvent(KeyEventType.arrowRight);
+          case 83: // Delete
+            return const KeyEvent(KeyEventType.backspace);
+        }
+      }
+    }
+
     // ESC or Arrow Sequences
     if (byte == 27) {
-      // Wait briefly to see if this is an escape sequence
-      sleep(const Duration(milliseconds: 30));
       final next1 = TerminalControl.tryReadNextByte();
-      final next2 = TerminalControl.tryReadNextByte();
-
-      if (next1 == 91 && next2 != null) {
-        switch (next2) {
-          case 65:
-            return const KeyEvent(KeyEventType.arrowUp);
-          case 66:
-            return const KeyEvent(KeyEventType.arrowDown);
-          case 67:
-            return const KeyEvent(KeyEventType.arrowRight);
-          case 68:
-            return const KeyEvent(KeyEventType.arrowLeft);
+      if (next1 == 91 || next1 == 79) { // '[' (CSI) or 'O' (SS3)
+        final next2 = TerminalControl.tryReadNextByte();
+        if (next2 != null) {
+          switch (next2) {
+            case 65:
+              return const KeyEvent(KeyEventType.arrowUp);
+            case 66:
+              return const KeyEvent(KeyEventType.arrowDown);
+            case 67:
+              return const KeyEvent(KeyEventType.arrowRight);
+            case 68:
+              return const KeyEvent(KeyEventType.arrowLeft);
+            case 51: // Delete: \x1b[3~
+              final next3 = TerminalControl.tryReadNextByte();
+              if (next3 == 126) {
+                return const KeyEvent(KeyEventType.backspace);
+              }
+              break;
+          }
         }
+      } else if (next1 != null) {
+        _replayByte(terminal, next1);
       }
 
       // No following bytes → real ESC key

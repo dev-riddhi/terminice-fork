@@ -1,6 +1,8 @@
 import 'dart:io' as io;
 
+import 'posix_console.dart';
 import 'terminal.dart';
+import 'windows_console.dart';
 
 /// Default Terminal implementation using dart:io stdin/stdout.
 ///
@@ -44,13 +46,30 @@ class DartTerminal implements Terminal, TerminalEnvironment {
 
 /// Default TerminalInput implementation using dart:io stdin.
 class DartTerminalInput implements TerminalInput {
+  int _coninHandle = WindowsConsole.invalidHandleValue;
+
+  int _getOrOpenConin() {
+    if (!WindowsConsole.isAvailable) return WindowsConsole.invalidHandleValue;
+    if (_coninHandle != WindowsConsole.invalidHandleValue) return _coninHandle;
+    final stdIn = WindowsConsole.getStdInputHandle();
+    if (stdIn != 0 && stdIn != WindowsConsole.invalidHandleValue && WindowsConsole.getConsoleMode(stdIn) != null) {
+      _coninHandle = stdIn;
+      return _coninHandle;
+    }
+    _coninHandle = WindowsConsole.openConin();
+    return _coninHandle;
+  }
+
   @override
   bool get hasTerminal {
     try {
-      return io.stdin.hasTerminal;
-    } catch (_) {
-      return false;
+      if (io.stdin.hasTerminal) return true;
+    } catch (_) {}
+    if (io.Platform.isWindows && WindowsConsole.isAvailable) {
+      final h = _getOrOpenConin();
+      return h != WindowsConsole.invalidHandleValue && WindowsConsole.getConsoleMode(h) != null;
     }
+    return false;
   }
 
   @override
@@ -91,7 +110,40 @@ class DartTerminalInput implements TerminalInput {
 
   @override
   int readByteSync() {
+    if (io.Platform.isWindows && WindowsConsole.isAvailable) {
+      final h = _getOrOpenConin();
+      if (h != WindowsConsole.invalidHandleValue) {
+        final byte = WindowsConsole.readByte(h);
+        if (byte != null) return byte;
+      }
+    }
     return io.stdin.readByteSync();
+  }
+
+  @override
+  int? tryReadByteSync({Duration timeout = Duration.zero}) {
+    if (io.Platform.isWindows && WindowsConsole.isAvailable) {
+      final h = _getOrOpenConin();
+      if (h != WindowsConsole.invalidHandleValue) {
+        if (WindowsConsole.isInputAvailable(h, timeout: timeout)) {
+          return WindowsConsole.readByte(h);
+        }
+        return null;
+      }
+    } else if (io.Platform.isLinux || io.Platform.isMacOS) {
+      if (PosixConsole.isAvailable) {
+        if (PosixConsole.isInputAvailable(timeout: timeout)) {
+          try {
+            return io.stdin.readByteSync();
+          } catch (_) {
+            return null;
+          }
+        }
+        return null;
+      }
+    }
+
+    return null;
   }
 
   @override

@@ -554,6 +554,10 @@ class _ProbeInput implements TerminalInput {
   int readByteSync() => delegate.readByteSync();
 
   @override
+  int? tryReadByteSync({Duration timeout = Duration.zero}) =>
+      delegate.tryReadByteSync(timeout: timeout);
+
+  @override
   String? readLineSync() => delegate.readLineSync();
 }
 

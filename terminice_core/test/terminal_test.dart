@@ -856,6 +856,67 @@ void main() {
       final event = KeyEventReader.read();
       expect(event.type, equals(KeyEventType.tab));
     });
+
+    test('reads Windows console extended arrow keys with 224 prefix', () {
+      terminal.mockInput.queueBytes([224, 72]); // Up
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowUp));
+
+      terminal.mockInput.queueBytes([224, 80]); // Down
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowDown));
+
+      terminal.mockInput.queueBytes([224, 75]); // Left
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowLeft));
+
+      terminal.mockInput.queueBytes([224, 77]); // Right
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowRight));
+
+      terminal.mockInput.queueBytes([224, 83]); // Delete
+      expect(KeyEventReader.read().type, equals(KeyEventType.backspace));
+    });
+
+    test('reads Windows console extended arrow keys with 0 prefix', () {
+      terminal.mockInput.queueBytes([0, 72]); // Up
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowUp));
+
+      terminal.mockInput.queueBytes([0, 80]); // Down
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowDown));
+    });
+
+    test('reads SS3 application cursor keys (ESC O A..D)', () {
+      terminal.mockInput.queueBytes([27, 79, 65]);
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowUp));
+
+      terminal.mockInput.queueBytes([27, 79, 66]);
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowDown));
+
+      terminal.mockInput.queueBytes([27, 79, 67]);
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowRight));
+
+      terminal.mockInput.queueBytes([27, 79, 68]);
+      expect(KeyEventReader.read().type, equals(KeyEventType.arrowLeft));
+    });
+
+    test('reads CSI delete escape sequence (ESC [ 3 ~)', () {
+      terminal.mockInput.queueBytes([27, 91, 51, 126]);
+      expect(KeyEventReader.read().type, equals(KeyEventType.backspace));
+    });
+
+    test('replays following byte when non-sequence follows ESC', () {
+      terminal.mockInput.queueBytes([27, 97]); // ESC followed by 'a'
+      final escEvent = KeyEventReader.read();
+      expect(escEvent.type, equals(KeyEventType.esc));
+
+      final charEvent = KeyEventReader.read();
+      expect(charEvent.type, equals(KeyEventType.char));
+      expect(charEvent.char, equals('a'));
+    });
+
+    test('tryReadByteSync returns byte when available and null when empty', () {
+      expect(terminal.mockInput.tryReadByteSync(), isNull);
+      terminal.mockInput.queueByte(65);
+      expect(terminal.mockInput.tryReadByteSync(), equals(65));
+      expect(terminal.mockInput.tryReadByteSync(), isNull);
+    });
   });
 
   group('Integration: Terminal switching', () {

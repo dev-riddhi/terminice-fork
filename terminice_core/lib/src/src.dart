@@ -6,6 +6,8 @@ export 'io/terminal.dart';
 export 'io/terminal_context.dart';
 export 'io/terminal_control.dart';
 export 'io/terminal_info.dart';
+export 'io/posix_console.dart';
+export 'io/windows_console.dart';
 
 // Navigation
 export 'navigation/focus_navigator.dart';

@@ -18,10 +18,11 @@ platforms:
   linux:
   macos:
   windows:
-
+publish_to: none
 dependencies:
   characters: ^1.3.0
-  termistyle: ^1.1.0
+  termistyle:
+    path: ../termistyle
 
 dev_dependencies:
   lints: ^6.0.0

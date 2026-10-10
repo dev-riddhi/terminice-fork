@@ -80,6 +80,12 @@ abstract class TerminalInput {
   /// Requires [lineMode] to be enabled for proper behavior.
   /// Returns `null` if end-of-input is reached.
   String? readLineSync();
+
+  /// Attempts to read a single byte synchronously from input within [timeout].
+  ///
+  /// Returns `null` if no byte is available before the timeout expires.
+  /// Implementations may poll the underlying handle or input queue.
+  int? tryReadByteSync({Duration timeout = Duration.zero}) => null;
 }
 
 /// Abstract output interface for terminal operations.

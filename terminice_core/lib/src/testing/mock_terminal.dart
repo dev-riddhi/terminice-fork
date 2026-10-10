@@ -183,6 +183,12 @@ class MockTerminalInput implements TerminalInput {
   }
 
   @override
+  int? tryReadByteSync({Duration timeout = Duration.zero}) {
+    if (_byteQueue.isEmpty) return null;
+    return _byteQueue.removeAt(0);
+  }
+
+  @override
   String? readLineSync() {
     if (_lineQueue.isEmpty) {
       return null;
@@ -343,6 +349,12 @@ class SpyTerminalInput implements TerminalInput {
   }
 
   @override
+  int? tryReadByteSync({Duration timeout = Duration.zero}) {
+    _calls.add('input.tryReadByteSync');
+    return 13;
+  }
+
+  @override
   String? readLineSync() {
     _calls.add('input.readLineSync');
     return 'test';
@@ -410,6 +422,9 @@ class ErrorTerminalInput implements TerminalInput {
 
   @override
   int readByteSync() => throw Exception('ErrorTerminal: readByteSync');
+
+  @override
+  int? tryReadByteSync({Duration timeout = Duration.zero}) => throw Exception('ErrorTerminal: tryReadByteSync');
 
   @override
   String? readLineSync() => throw Exception('ErrorTerminal: readLineSync');

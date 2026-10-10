@@ -1,6 +1,8 @@
-import 'dart:io' show sleep;
+import 'dart:io' as io;
 
+import 'dart_terminal.dart';
 import 'terminal_context.dart';
+import 'windows_console.dart';
 
 /// Terminal utilities used across components and prompts to manage raw mode and input.
 class TerminalControl {
@@ -12,20 +14,29 @@ class TerminalControl {
     final origLineMode = input.lineMode;
     input.echoMode = false;
     input.lineMode = false;
-    return TerminalModeState(origEcho: origEcho, origLineMode: origLineMode);
+
+    WindowsConsoleState? windowsState;
+    if (io.Platform.isWindows && input is DartTerminalInput) {
+      windowsState = WindowsConsoleState.enterRaw();
+    }
+
+    return TerminalModeState(
+      origEcho: origEcho,
+      origLineMode: origLineMode,
+      windowsState: windowsState,
+    );
   }
 
   /// Attempts to read the next byte for multi-byte escape sequences.
   ///
   /// The optional [delay] gives the terminal a moment to deliver additional
-  /// bytes (default 2ms). Returns null if no byte is available.
+  /// bytes (default 20ms). Returns null if no byte is available.
   static int? tryReadNextByte(
-      {Duration delay = const Duration(milliseconds: 2)}) {
+      {Duration delay = const Duration(milliseconds: 20)}) {
     try {
-      sleep(delay);
-      if (TerminalContext.input.hasTerminal) {
-        return TerminalContext.input.readByteSync();
-      }
+      final input = TerminalContext.input;
+      final byte = input.tryReadByteSync(timeout: delay);
+      if (byte != null) return byte;
     } catch (_) {}
     return null;
   }
@@ -52,14 +63,22 @@ class TerminalControl {
 class TerminalModeState {
   final bool origEcho;
   final bool origLineMode;
+  final WindowsConsoleState? windowsState;
 
-  TerminalModeState({required this.origEcho, required this.origLineMode});
+  TerminalModeState({
+    required this.origEcho,
+    required this.origLineMode,
+    this.windowsState,
+  });
 
   /// Restores the terminal's echo and line mode flags to their original values.
   ///
   /// Safe to call multiple times; best-effort guards prevent throwing if the
   /// terminal becomes unavailable between enter/restore calls.
   void restore() {
+    try {
+      windowsState?.restore();
+    } catch (_) {}
     try {
       if (!TerminalContext.input.hasTerminal) return;
     } catch (_) {
